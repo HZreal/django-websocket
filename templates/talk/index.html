@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <textarea class="form-control" id="chat-log" disabled rows="20"></textarea><br/>
+  <input class="form-control" id="chat-message-input" type="text"/><br/>
+  <input class="btn btn-success btn-block" id="chat-message-submit" type="button" value="Send"/>
+{% endblock %}
+
+{% block js %}
+<script>
+  $('#page_header').text('聊天室');
+  $('#page_header_descript').text('chat room');
+
+  var chatSocket = new WebSocket('ws://' + window.location.host + '/ws/talk/');
+
+  // 监听服务器的发来的消息
+  chatSocket.onmessage = function(e) {
+
+    // 服务器数据为文本(json等)
+    // if(typeOf(e.data) === String) {console.log("Received data string");}
+    // 服务器数据为二进制数据(音视频等)
+    // if(e.data instanceof ArrayBuffer){var buffer = event.data;console.log("Received arraybuffer");}
+
+    var data = JSON.parse(e.data);
+    var message = data['message'];
+    document.querySelector('#chat-log').value += (message + '\n');
+  };
+
+  // 浏览器接收到websocket服务器发送过来的关闭连接请求时，会触发onclose消息
+  chatSocket.onclose = function(e) {
+    console.error('Chat socket closed unexpectedly');
+  };
+
+  // 连接服务端成功时触发
+  chatSocket.onopen = function (e) {
+      console.log('connect succeed !');
+  }
+
+  // 连接失败，或者发送、接收数据失败，或者数据处理出错都会触发onerror消息
+  chatSocket.onerror = function (e) {
+      console.log('connect or send/receive/handle data failed');
+  }
+
+  // 鼠标焦点，光标
+  document.querySelector('#chat-message-input').focus();
+
+  // onkeyup监听键盘敲击按键
+  document.querySelector('#chat-message-input').onkeyup = function(e) {
+    if (e.keyCode === 13) {  // enter, return
+        document.querySelector('#chat-message-submit').click();          // 按下enter键会调用点击事件(消息提交)
+    }
+  };
+
+  // 定义点击send按钮事件(按enter或点击send会触发)
+  document.querySelector('#chat-message-submit').onclick = function(e) {
+    var messageInputDom = document.querySelector('#chat-message-input');
+    var message = messageInputDom.value;            // 取用户输入的消息
+    chatSocket.send(JSON.stringify({                // 向后端发送消息
+        'message': message
+    }));
+
+    messageInputDom.value = '';
+  };
+
+</script>
+{% endblock %}
